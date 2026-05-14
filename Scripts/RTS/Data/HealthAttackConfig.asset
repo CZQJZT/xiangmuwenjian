@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f21bbe0aaff22884085fa5d83c7907cf, type: 3}
+  m_Name: HealthAttackConfig
+  m_EditorClassIdentifier: 
+  Entries:
+  - Rank: 11
+    Health: 1
+    Attack: 0
+  - Rank: 10
+    Health: 1
+    Attack: 9999
+  - Rank: 0
+    Health: 9999
+    Attack: 9999
+  - Rank: 9
+    Health: 5
+    Attack: 1
+  - Rank: 8
+    Health: 10
+    Attack: 2
+  - Rank: 7
+    Health: 20
+    Attack: 4
+  - Rank: 6
+    Health: 40
+    Attack: 8
+  - Rank: 5
+    Health: 80
+    Attack: 16
+  - Rank: 4
+    Health: 160
+    Attack: 32
+  - Rank: 3
+    Health: 320
+    Attack: 64
+  - Rank: 2
+    Health: 640
+    Attack: 128
+  - Rank: 1
+    Health: 1280
+    Attack: 356
