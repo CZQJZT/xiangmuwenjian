@@ -1,7 +1,8 @@
-using System;  // ← 添加这个引用
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using JunqiGame.Core;
+using JunqiGame.AI;
 using JunqiGame.RTS.Data;
 using JunqiGame.UI;
 using JunqiGame.MonoBehaviours;
@@ -36,6 +37,9 @@ namespace JunqiGame.RTS
         private bool isProcessingQueue = false;
         private bool combatTriggered = false;
 
+        private AIBehaviorTree aiBehaviorTree;
+        private AIContext aiContext;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -65,7 +69,11 @@ namespace JunqiGame.RTS
                 APRed = Config.APMax
             };
 
-            Console.WriteLine($"✅ [RTS] Initialized: APMax={Config.APMax}, Tick={Config.RTSTickIntervalSeconds}s");
+            AIDifficulty difficulty = gameManager != null ? gameManager.AIDifficulty : AIDifficulty.Medium;
+            aiBehaviorTree = new AIBehaviorTree(difficulty);
+            aiContext = new AIContext();
+
+            Console.WriteLine($"✅ [RTS] Initialized: APMax={Config.APMax}, Tick={Config.RTSTickIntervalSeconds}s, AI={difficulty}");
 
             if (HealthConfig != null)
                 HealthConfig.ValidateConfig();
@@ -188,21 +196,56 @@ namespace JunqiGame.RTS
             var board = GetBoard();
             if (board == null) return;
 
-            // 🔑 关键修复：AP为0时不生成AI动作
             if (state.APRed <= 0f)
-            {
-                Console.WriteLine($"🤖 [RTS AI] Red AP is 0, skipping AI action this tick");
                 return;
-            }
 
             var validMoves = gameManager.GetGameState().GetValidMoves(PlayerColor.Red);
             if (validMoves.Count == 0) return;
 
             if (!ConsumeAP(PlayerColor.Red, 1f)) return;
 
-            int startIdx = UnityEngine.Random.Range(0, validMoves.Count);
-            RTSMoveAction selectedAction = null;
+            aiContext.Reset();
+            aiContext.Board = board;
+            aiContext.AIColor = PlayerColor.Red;
+            aiContext.CurrentAP = state.APRed;
+            aiContext.APMax = state.APMax;
+            aiContext.ValidMoves = validMoves;
+            aiContext.Difficulty = gameManager.AIDifficulty;
+            aiContext.PlayMode = gameManager.GetGameState().PlayMode;
+            aiContext.BusyPieceKeys = busyPieceKeys;
 
+            RTSMoveAction selectedAction = aiBehaviorTree.Tick(aiContext);
+
+            if (selectedAction != null)
+            {
+                if (busyPieceKeys.Contains(selectedAction.FromPos.ToString()))
+                {
+                    Console.WriteLine($"⚠️ [AI BT] {selectedAction.FromPos} is busy, falling back");
+                    selectedAction = FallbackRandomAction(validMoves, board);
+                }
+                else if (pieceDestinations.ContainsValue(selectedAction.ToPos))
+                {
+                    Console.WriteLine($"⚠️ [AI BT] {selectedAction.ToPos} is targeted, falling back");
+                    selectedAction = FallbackRandomAction(validMoves, board);
+                }
+            }
+            else
+            {
+                selectedAction = FallbackRandomAction(validMoves, board);
+            }
+
+            if (selectedAction != null)
+            {
+                busyPieceKeys.Add(selectedAction.FromPos.ToString());
+                pieceDestinations[selectedAction.FromPos.ToString()] = selectedAction.ToPos;
+                actionQueue.Enqueue(selectedAction);
+                aiActionThisTick = true;
+            }
+        }
+
+        private RTSMoveAction FallbackRandomAction(List<string> validMoves, Board board)
+        {
+            int startIdx = UnityEngine.Random.Range(0, validMoves.Count);
             for (int i = 0; i < validMoves.Count; i++)
             {
                 int idx = (startIdx + i) % validMoves.Count;
@@ -217,34 +260,15 @@ namespace JunqiGame.RTS
                 if (piece == null || piece.Color != PlayerColor.Red) continue;
                 if (!GameRules.IsValidMove(from, to, board, PlayerColor.Red)) continue;
 
-                busyPieceKeys.Add(from.ToString());
-                pieceDestinations[from.ToString()] = to;
-                selectedAction = new RTSMoveAction
+                return new RTSMoveAction
                 {
                     FromPos = from,
                     ToPos = to,
                     MoveString = moveStr,
                     Player = PlayerColor.Red
                 };
-                break;
             }
-
-            if (selectedAction != null)
-            {
-                actionQueue.Enqueue(selectedAction);
-                aiActionThisTick = true;
-                
-                // 🔑 简化AI日志
-                if (UnityEngine.Random.Range(0, 10) == 0)  // 10%概率输出
-                {
-                    Console.WriteLine($"❤️ [RTS] AI enqueued: {selectedAction.MoveString}. Queue: {actionQueue.Count}");
-                }
-                return;
-            }
-            else
-            {
-                Console.WriteLine($"⚠️ [AI] All moves invalid or blocked, AP consumed but no action queued");
-            }
+            return null;
         }
 
         private void ProcessActionQueue()
