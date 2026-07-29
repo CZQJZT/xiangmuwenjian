@@ -1,0 +1,5 @@
+DebugLogManager & DebugLogPanel
+Unity 运行时日志采集与可视化工具。使用 ConcurrentQueue 实现线程安全日志收集，支持任意子线程实时写入。
+采用对象池与虚拟滚动技术，万级日志下零 GC 分配，帧率稳定 60 FPS。
+支持关键词搜索与日志类型过滤，可导出 CSV / TXT 格式，支持行号区间导出。
+纯代码动态构建 UI，无 Prefab 依赖，支持拖拽移动、缩放、F12 开关。
