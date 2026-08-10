@@ -1,0 +1,9 @@
+namespace JunqiGame.AI.BehaviorTree
+{
+    public enum BTStatus
+    {
+        Success,
+        Failure,
+        Running
+    }
+}
